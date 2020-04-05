@@ -1,14 +1,5 @@
 const {default: PQueue} = require('p-queue');
 
-
-/*
-    TODO: return the right promise.
-        Maybe don't delete items from queue
-        instead use existing return and duplicate it
-        so no promise is deleted the new one is just redirected
-
-*/
-
 class QueueClass {
     constructor() {
         this._queue = [];
@@ -78,12 +69,24 @@ queue.on('active', () => {
 });
 
 async function singletip(from, to, coin, amount) {
-    console.log('SINGLETIP CALL: ', from, to, coin, amount, 'SINGLETIP END');
+    console.log('START SINGLETIP CALL: ', from, to, coin, amount, 'SINGLETIP END');
+    await new Promise((resolve) => {
+        setTimeout(() => {
+            resolve();
+        }, 1000);
+    });
+    console.log('COMPLETE SINGLETIP CALL: ', from, to, coin, amount, 'SINGLETIP END');
     return `TX${from}${to}${coin}${amount}`;
 }
 
 async function multiTip(from, addresses) {
-    console.log('MULTITIP ALL CALL', from, addresses, ' MULTITIP END');
+    console.log('START MULTITIP ALL CALL', from, addresses, ' MULTITIP END');
+    await new Promise((resolve) => {
+        setTimeout(() => {
+            resolve();
+        }, 1000);
+    });
+    console.log('COMPLETE MULTITIP ALL CALL', from, addresses, ' MULTITIP END');
     return `TX${from}${JSON.stringify(addresses)}`;
 }
 
@@ -92,8 +95,12 @@ const mergedFnGlobal = multiTip;
 function mergeSingle(promise1Call, promise2Call, mergeFn) {
     if (promise1Call.method === promise2Call.method && promise1Call.from === promise2Call.from) {
         const toAddresses = {};
-        toAddresses[`${promise1Call.to}`] = promise1Call.amount;
-        toAddresses[`${promise2Call.to}`] = promise2Call.amount;
+        if (promise1Call.to === promise2Call.to) {
+            toAddresses[`${promise1Call.to}`] = promise1Call.amount + promise2Call.amount;
+        } else {
+            toAddresses[`${promise1Call.to}`] = promise1Call.amount;
+            toAddresses[`${promise2Call.to}`] = promise2Call.amount;
+        }
         return { 
             fn: async () => mergeFn(promise1Call.from, toAddresses),
             options: {
@@ -111,7 +118,11 @@ function mergeSingle(promise1Call, promise2Call, mergeFn) {
 
 function mergeToMulti(multiCall, singleCall, mergeFn) {
     if (multiCall.method === 'multi' && singleCall.method === 'single' && multiCall.from === singleCall.from) {
-        multiCall.addresses[`${singleCall.to}`] = singleCall.amount;
+        if (multiCall.addresses[`${singleCall.to}`]) {
+            multiCall.addresses[`${singleCall.to}`] = multiCall.addresses[`${singleCall.to}`] + singleCall.amount;
+        } else {
+            multiCall.addresses[`${singleCall.to}`] = singleCall.amount;
+        }
         return { 
             fn: async () => mergeFn(multiCall.from, multiCall.addresses), 
             options: {
@@ -138,27 +149,16 @@ async function run() {
     const t7 = queue.add(() => singletip('xana', 'TaXb7', 'tzc', 18), { method: 'single', from: 'xana', to: 'TaXb7', amount: 18, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t8 = queue.add(() => singletip('stefan', 'TaXb8', 'tzc', 19), { method: 'single', from: 'stefan', to: 'TaXb8', amount: 19, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t9 = queue.add(() => singletip('xana', 'TaXb9', 'tzc', 20), { method: 'single', from: 'xana', to: 'TaXb9', amount: 20, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
-    const t11 = await t1;
-    console.log('t1', t11);
-    const t22 = await t2;
-    console.log('t2', t22);
-    const t33 = await t3;
-    console.log('t3', t33);
-    const t44 = await t4;
-    console.log('t4', t44);
-    const t55 = await t5;
-    console.log('t5', t55);
-    const t66 = await t6;
-    console.log('t6', t66);
-    const t77 = await t7;
-    console.log('t7', t77);
-    const t88 = await t8;
-    console.log('t8', t88);
-    const t1010 = await t10;
-    console.log('t1010', t1010);
-    const t99 = await t9;
-    console.log('t9', t99);
-    console.log('end');
+    Promise.resolve(t1).then((value) => console.log(`Result t1: ${value}`));
+    Promise.resolve(t2).then((value) => console.log(`Result t2: ${value}`));
+    Promise.resolve(t3).then((value) => console.log(`Result t3: ${value}`));
+    Promise.resolve(t4).then((value) => console.log(`Result t4: ${value}`));
+    Promise.resolve(t5).then((value) => console.log(`Result t5: ${value}`));
+    Promise.resolve(t6).then((value) => console.log(`Result t6: ${value}`));
+    Promise.resolve(t7).then((value) => console.log(`Result t7: ${value}`));
+    Promise.resolve(t8).then((value) => console.log(`Result t8: ${value}`));
+    Promise.resolve(t9).then((value) => console.log(`Result t9: ${value}`));
+    Promise.resolve(t10).then((value) => console.log(`Result t10: ${value}`));
 }
 
 run();
