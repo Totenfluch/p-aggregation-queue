@@ -28,7 +28,17 @@ class QueueClass {
                 if (result !== null) {
                     // console.log(result, `merged ${JSON.stringify(options)} WITH ${JSON.stringify(this._queue[i].options)}`);
                     this.removeItemFromQueueIndex(i);
-                    this.insertIntoQueue(i, { run: result.fn, options: result.options });
+                    this.insertIntoQueue(i, 
+                        { 
+                            run: async () => {
+                                const fnResult = await result.fn();
+                                const resolveArray = result.options.resolve;
+                                for (let i = 0; i < resolveArray.length; i += 1) {
+                                    resolveArray[i](fnResult);
+                                }
+                            },
+                            options: result.options 
+                        });
                     return;
                 }
             }
@@ -72,11 +82,9 @@ async function singletip(from, to, coin, amount) {
     return `TX${from}${to}${coin}${amount}`;
 }
 
-async function multiTip(from, addresses, resolveArray) {
+async function multiTip(from, addresses) {
     console.log('MULTITIP ALL CALL', from, addresses, ' MULTITIP END');
-    for (let i = 0; i < resolveArray.length; i += 1) {
-        resolveArray[i](`TX${from}${JSON.stringify(addresses)}`);
-    }
+    return `TX${from}${JSON.stringify(addresses)}`;
 }
 
 const mergedFnGlobal = multiTip;
@@ -87,7 +95,7 @@ function mergeSingle(promise1Call, promise2Call, mergeFn) {
         toAddresses[`${promise1Call.to}`] = promise1Call.amount;
         toAddresses[`${promise2Call.to}`] = promise2Call.amount;
         return { 
-            fn: async () => mergeFn(promise1Call.from, toAddresses, promise1Call.resolve.concat(promise2Call.resolve)),
+            fn: async () => mergeFn(promise1Call.from, toAddresses),
             options: {
                 method: 'multi',
                 from: promise1Call.from,
@@ -105,7 +113,7 @@ function mergeToMulti(multiCall, singleCall, mergeFn) {
     if (multiCall.method === 'multi' && singleCall.method === 'single' && multiCall.from === singleCall.from) {
         multiCall.addresses[`${singleCall.to}`] = singleCall.amount;
         return { 
-            fn: async () => mergeFn(multiCall.from, multiCall.addresses, multiCall.resolve.concat(singleCall.resolve)), 
+            fn: async () => mergeFn(multiCall.from, multiCall.addresses), 
             options: {
                 method: 'multi',
                 from: multiCall.from,
@@ -126,6 +134,7 @@ async function run() {
     const t4 = queue.add(() => singletip('stefan', 'TaXb4', 'tzc', 15), { method: 'single', from: 'stefan', to: 'TaXb4', amount: 15, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t5 = queue.add(() => singletip('xana', 'TaXb5', 'tzc', 16), { method: 'single', from: 'xana', to: 'TaXb5', amount: 16, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t6 = queue.add(() => singletip('stefan', 'TaXb6', 'tzc', 17), { method: 'single', from: 'stefan', to: 'TaXb6', amount: 17, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
+    const t10 = queue.add(() => singletip('torsten', 'TaXb2', 'tzc', 31), { method: 'single', from: 'torsten', to: 'TaXb2n', amount: 11, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t7 = queue.add(() => singletip('xana', 'TaXb7', 'tzc', 18), { method: 'single', from: 'xana', to: 'TaXb7', amount: 18, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t8 = queue.add(() => singletip('stefan', 'TaXb8', 'tzc', 19), { method: 'single', from: 'stefan', to: 'TaXb8', amount: 19, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t9 = queue.add(() => singletip('xana', 'TaXb9', 'tzc', 20), { method: 'single', from: 'xana', to: 'TaXb9', amount: 20, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
@@ -145,6 +154,8 @@ async function run() {
     console.log('t7', t77);
     const t88 = await t8;
     console.log('t8', t88);
+    const t1010 = await t10;
+    console.log('t1010', t1010);
     const t99 = await t9;
     console.log('t9', t99);
     console.log('end');
