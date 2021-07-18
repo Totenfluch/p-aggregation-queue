@@ -1,4 +1,4 @@
-const {default: PQueue} = require('p-queue');
+const { default: PQueue } = require('p-aggregate-queue');
 
 class QueueClass {
     constructor() {
@@ -19,8 +19,8 @@ class QueueClass {
                 if (result !== null) {
                     // console.log(result, `merged ${JSON.stringify(options)} WITH ${JSON.stringify(this._queue[i].options)}`);
                     this.removeItemFromQueueIndex(i);
-                    this.insertIntoQueue(i, 
-                        { 
+                    this.insertIntoQueue(i,
+                        {
                             run: async () => {
                                 const fnResult = await result.fn();
                                 const resolveArray = result.options.resolve;
@@ -28,7 +28,7 @@ class QueueClass {
                                     resolveArray[i](fnResult);
                                 }
                             },
-                            options: result.options 
+                            options: result.options
                         });
                     return;
                 }
@@ -57,7 +57,9 @@ class QueueClass {
     }
 }
 
-let queue = new PQueue({concurrency: 1, queueClass: QueueClass});
+let queue = new PQueue({ concurrency: 1, queueClass: QueueClass, throwOnTimeout: true, timeout: 600 });
+queue.on('completed', (msg) => console.log(`Queue complete: ${msg}`));
+queue.on('error', (error) => console.log(`ERR ${error}`));
 
 let count = 0;
 queue.on('active', () => {
@@ -73,7 +75,7 @@ async function singletip(from, to, coin, amount) {
     await new Promise((resolve) => {
         setTimeout(() => {
             resolve();
-        }, 1000);
+        }, 500);
     });
     console.log('COMPLETE SINGLETIP CALL: ', from, to, coin, amount, 'SINGLETIP END');
     return `TX${from}${to}${coin}${amount}`;
@@ -101,7 +103,7 @@ function mergeSingle(promise1Call, promise2Call, mergeFn) {
             toAddresses[`${promise1Call.to}`] = promise1Call.amount;
             toAddresses[`${promise2Call.to}`] = promise2Call.amount;
         }
-        return { 
+        return {
             fn: async () => mergeFn(promise1Call.from, toAddresses),
             options: {
                 method: 'multi',
@@ -123,8 +125,8 @@ function mergeToMulti(multiCall, singleCall, mergeFn) {
         } else {
             multiCall.addresses[`${singleCall.to}`] = singleCall.amount;
         }
-        return { 
-            fn: async () => mergeFn(multiCall.from, multiCall.addresses), 
+        return {
+            fn: async () => mergeFn(multiCall.from, multiCall.addresses),
             options: {
                 method: 'multi',
                 from: multiCall.from,
@@ -137,7 +139,7 @@ function mergeToMulti(multiCall, singleCall, mergeFn) {
     }
     return null;
 }
- 
+
 async function run() {
     const t1 = queue.add(() => singletip('stefan', 'TaXb1', 'tzc', 10), { method: 'single', from: 'stefan', to: 'TaXb1', amount: 10, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });
     const t2 = queue.add(() => singletip('torsten', 'TaXb2', 'tzc', 11), { method: 'single', from: 'torsten', to: 'TaXb2', amount: 11, mergePromise: [mergeToMulti, mergeSingle], mergeFn: mergedFnGlobal });

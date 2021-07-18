@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "p-queue": "^6.3.0"
+    "p-aggregate-queue": "^8.0.12"
   }
 }
